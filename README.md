@@ -32,31 +32,31 @@
 
 ### 安装依赖
 
-`ash
+```bash
 npm install
-`
+```
 
 ### 开发模式
 
-`ash
+```bash
 npm run tauri:dev
-`
+```
 
 ### 构建生产版本
 
-`ash
+```bash
 npm run tauri:build
-`
+```
 
 ### 构建并复制安装包到项目根目录
 
-`ash
+```bash
 npm run tauri:build:copy
-`
+```
 
 ## 项目结构
 
-`
+```
 ai-comic-character-db/
 ├── src/                    # React 前端源码
 │   ├── components/         # UI 组件
@@ -69,7 +69,7 @@ ai-comic-character-db/
 ├── scripts/                # 构建脚本
 ├── package.json
 └── vite.config.ts
-`
+```
 
 ## 使用说明
 
