@@ -1,4 +1,4 @@
-﻿# AI漫剧角色库 (AIComicCharacterDB)
+# AI漫剧角色库 (AIComicCharacterDB)
 
 基于 Tauri 2.x 构建的桌面端 AI 漫剧角色资产管理系统，专为漫剧创作团队设计。
 
@@ -27,10 +27,10 @@
 
 ### 方式 1：使用安装包（推荐）
 
-在 [Releases]([Releases · HerrDanke/AI-Comic-Asset-Management](https://github.com/HerrDanke/AI-Comic-Asset-Management/releases)) 页面下载最新版本的安装包：
+在 [Releases](https://github.com/HerrDanke/AI-Comic-Asset-Management/releases) 页面下载最新版本的安装包：
 
-- **MSI 安装包**：AIComicCharacterDB_x.x.x_x64.msi - 双击安装
-- **NSIS 安装包**：AIComicCharacterDB_x.x.x_x64-setup.exe - 双击安装
+- **MSI 安装包**：`AIComicCharacterDB_x.x.x_x64.msi` - 双击安装
+- **NSIS 安装包**：`AIComicCharacterDB_x.x.x_x64-setup.exe` - 双击安装
 
 安装后从开始菜单或桌面快捷方式启动应用。
 
@@ -47,10 +47,9 @@
 
 #### 构建步骤
 
-`ash
-
+```bash
 # 1. 克隆仓库
-git clone https://github.com/你的用户名/ai-comic-character-db.git
+git clone https://github.com/HerrDanke/AI-Comic-Asset-Management.git
 cd ai-comic-character-db
 
 # 2. 安装依赖
@@ -61,16 +60,15 @@ npm run tauri:dev
 
 # 4. 构建生产版本
 npm run tauri:build
-`
+```
 
-构建完成后，安装包位于 src-tauri/target/release/bundle/ 目录下：
-- msi/AIComicCharacterDB_x.x.x_x64_en-US.msi - MSI 安装包
-- 
-sis/AIComicCharacterDB_x.x.x_x64-setup.exe - NSIS 安装包
+构建完成后，安装包位于 `src-tauri/target/release/bundle/` 目录下：
+- `msi/AIComicCharacterDB_x.x.x_x64_en-US.msi` - MSI 安装包
+- `nsis/AIComicCharacterDB_x.x.x_x64-setup.exe` - NSIS 安装包
 
 ## 项目结构
 
-`
+```
 ai-comic-character-db/
 ├── src/                    # React 前端源码
 │   ├── components/         # UI 组件
@@ -83,7 +81,7 @@ ai-comic-character-db/
 ├── scripts/                # 构建脚本
 ├── package.json
 └── vite.config.ts
-`
+```
 
 ## 使用说明
 
@@ -97,7 +95,7 @@ ai-comic-character-db/
 
 ## 数据存储
 
-- 项目数据存储在用户主目录 ~/AIComicCharacterDB/projects/ 中
+- 项目数据存储在用户主目录 `~/AIComicCharacterDB/projects/` 中
 - 每个项目独立文件夹，包含角色数据和图片资源
 - 支持项目间的导入导出，合并时自动重命名重复角色
 
@@ -108,12 +106,6 @@ ai-comic-character-db/
 **新功能：**
 - 🎯 **角色拖拽排序** — 支持拖拽角色卡片调整顺序，CSS transform 实现流畅动画
 
-------
-
-
-
-### v1.0.1 — 优化 (2026-07-26)
-
 **核心问题修复：**
 - 🔴 **修复双 store 同步机制** — characterStore 与 projectStore 之间的数据同步重构，写盘成功后明确同步回 projectStore，确保数据一致性
 - 🔴 **修复关闭窗口数据丢失** — 新增关闭前自动保存机制，脏数据时先保存再关闭
@@ -121,19 +113,19 @@ ai-comic-character-db/
 **功能优化：**
 - 🚀 **写入队列防止并发竞争** — 所有写入操作通过 Promise 链式队列串行化，避免 JSON 文件并发写入冲突
 - 🚀 **导入合并模式实现** — 支持"作为新项目导入"和"合并到现有项目"两种模式，合并时自动检测重名并添加序号后缀
-- 🚀 **getImageData 返回 data URL** — Rust 端自动检测图片格式并返回完整的 data:image/...;base64,... 格式，前端无需手动拼接 MIME
+- 🚀 **getImageData 返回 data URL** — Rust 端自动检测图片格式并返回完整的 `data:image/...;base64,...` 格式，前端无需手动拼接 MIME
 - 🚀 **自动保存策略优化** — 新增定时保存（每30秒）和失焦保存（切换应用时），编辑器失焦仅静默保存不再产生冗余版本快照
 
 **变更文件：**
-- src/stores/characterStore.ts — 双 store 同步修复
-- src/stores/projectStore.ts — 导入合并模式支持 + 角色排序
-- src/utils/tauri.ts — 写入队列 + 导入合并 API
-- src/App.tsx — 自动保存机制（关闭前/定时/失焦）
-- src/components/Topbar.tsx — 导入对话框
-- src/components/CharacterList.tsx — 拖拽排序
-- src/components/CharacterEditor.tsx — 失焦保存策略调整
-- src/components/ImageGallery.tsx — 适配 data URL
-- src-tauri/src/commands.rs — 合并导入 + data URL + UUID 颜色生成
+- `src/stores/characterStore.ts` — 双 store 同步修复
+- `src/stores/projectStore.ts` — 导入合并模式支持 + 角色排序
+- `src/utils/tauri.ts` — 写入队列 + 导入合并 API
+- `src/App.tsx` — 自动保存机制（关闭前/定时/失焦）
+- `src/components/Topbar.tsx` — 导入对话框
+- `src/components/CharacterList.tsx` — 拖拽排序
+- `src/components/CharacterEditor.tsx` — 失焦保存策略调整
+- `src/components/ImageGallery.tsx` — 适配 data URL
+- `src-tauri/src/commands.rs` — 合并导入 + data URL + UUID 颜色生成
 
 ---
 
