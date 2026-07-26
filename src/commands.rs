@@ -2,7 +2,6 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
-use base64::Engine;
 
 // ============ 数据模型 ============
 
@@ -468,7 +467,7 @@ pub fn get_image_data(project_id: String, character_id: String, image_name: Stri
     let images_dir = get_images_dir(&project_id, &character_id);
     let image_path = images_dir.join(&image_name);
     let data = fs::read(&image_path).map_err(|e| e.to_string())?;
-    let base64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &data);
+    let base64 = base64::engine::general_purpose::STANDARD.encode(&data);
     let ext = image_name.rsplit('.').next().unwrap_or("png").to_lowercase();
     let mime = match ext.as_str() {
         "jpg" | "jpeg" => "image/jpeg",
@@ -480,3 +479,4 @@ pub fn get_image_data(project_id: String, character_id: String, image_name: Stri
     };
     Ok(format!("data:{};base64,{}", mime, base64))
 }
+

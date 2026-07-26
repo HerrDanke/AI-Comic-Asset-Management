@@ -1,29 +1,38 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { CharacterData, ProjectMeta } from '../types';
 import * as api from '../utils/tauri';
 
 interface ProjectState {
+  // 项目列表
   projects: ProjectMeta[];
   activeProjectId: string | null;
+  
+  // 角色列表
   characters: CharacterData[];
   activeCharacterId: string | null;
+  
+  // 加载状态
   isLoading: boolean;
   error: string | null;
-
+  
+  // 项目操作
   loadProjects: () => Promise<void>;
   createProject: (name: string, description: string) => Promise<void>;
   deleteProject: (id: string) => Promise<void>;
   switchProject: (id: string) => Promise<void>;
-
+  
+  // 角色操作
   loadCharacters: (projectId: string) => Promise<void>;
   createCharacter: () => Promise<void>;
   deleteCharacter: (id: string) => Promise<void>;
   switchCharacter: (id: string | null) => void;
   refreshActiveCharacter: () => Promise<void>;
-
+  
+  // 导入/导出
   exportProject: (exportPath: string) => Promise<void>;
-  importProject: (importPath: string, mode: string, targetProjectId?: string) => Promise<void>;
-
+  importProject: (importPath: string) => Promise<void>;
+  
+  // 工具
   getActiveProject: () => ProjectMeta | null;
   getActiveCharacter: () => CharacterData | null;
 }
@@ -41,9 +50,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       const projects = await api.listProjects();
       set({ projects, isLoading: false });
-
+      
+      // 如果没有项目，不做任何操作
       if (projects.length === 0) return;
-
+      
+      // 如果有活动项目，保持它；否则选择第一个
       const { activeProjectId } = get();
       if (!activeProjectId || !projects.find(p => p.id === activeProjectId)) {
         set({ activeProjectId: projects[0].id });
@@ -79,9 +90,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         const activeProjectId = state.activeProjectId === id
           ? (projects[0]?.id || null)
           : state.activeProjectId;
-        return { projects, activeProjectId, isLoading: false };
+        return {
+          projects,
+          activeProjectId,
+          isLoading: false,
+        };
       });
-
+      
+      // 如果删除的是当前项目，加载新项目的角色
       const { activeProjectId } = get();
       if (activeProjectId) {
         await get().loadCharacters(activeProjectId);
@@ -104,7 +120,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       const characters = await api.listCharacters(projectId);
       set({ characters, isLoading: false });
-
+      
       if (characters.length > 0) {
         set({ activeCharacterId: characters[0].id });
       } else {
@@ -118,7 +134,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   createCharacter: async () => {
     const { activeProjectId } = get();
     if (!activeProjectId) return;
-
+    
     set({ isLoading: true, error: null });
     try {
       const character = await api.createCharacter(activeProjectId);
@@ -135,7 +151,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   deleteCharacter: async (id) => {
     const { activeProjectId } = get();
     if (!activeProjectId) return;
-
+    
     set({ isLoading: true, error: null });
     try {
       await api.deleteCharacter(activeProjectId, id);
@@ -144,7 +160,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         const activeCharacterId = state.activeCharacterId === id
           ? (characters[0]?.id || null)
           : state.activeCharacterId;
-        return { characters, activeCharacterId, isLoading: false };
+        return {
+          characters,
+          activeCharacterId,
+          isLoading: false,
+        };
       });
     } catch (error) {
       set({ error: String(error), isLoading: false });
@@ -158,11 +178,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   refreshActiveCharacter: async () => {
     const { activeProjectId, activeCharacterId } = get();
     if (!activeProjectId || !activeCharacterId) return;
-
+    
     try {
       const character = await api.getCharacter(activeProjectId, activeCharacterId);
       set(state => ({
-        characters: state.characters.map(c =>
+        characters: state.characters.map(c => 
           c.id === character.id ? character : c
         ),
       }));
@@ -174,7 +194,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   exportProject: async (exportPath) => {
     const { activeProjectId } = get();
     if (!activeProjectId) return;
-
+    
     set({ isLoading: true, error: null });
     try {
       await api.exportProject(activeProjectId, exportPath);
@@ -184,24 +204,16 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
-  // ── 支持 new / merge 两种导入模式 ──
-  importProject: async (importPath, mode, targetProjectId) => {
+  importProject: async (importPath) => {
     set({ isLoading: true, error: null });
     try {
-      const project = await api.importProject(importPath, mode, targetProjectId);
-      if (mode === 'new') {
-        set(state => ({
-          projects: [project, ...state.projects],
-          activeProjectId: project.id,
-          isLoading: false,
-        }));
-        await get().loadCharacters(project.id);
-      } else {
-        // 合并模式：刷新项目列表和角色
-        await get().loadProjects();
-        set({ activeProjectId: project.id, isLoading: false });
-        await get().loadCharacters(project.id);
-      }
+      const project = await api.importProject(importPath, 'new');
+      set(state => ({
+        projects: [project, ...state.projects],
+        activeProjectId: project.id,
+        isLoading: false,
+      }));
+      await get().loadCharacters(project.id);
     } catch (error) {
       set({ error: String(error), isLoading: false });
     }

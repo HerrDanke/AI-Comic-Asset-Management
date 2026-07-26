@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCharacterStore } from '../stores/characterStore';
 import { useProjectStore } from '../stores/projectStore';
 import { getImageData } from '../utils/tauri';
@@ -11,27 +11,37 @@ interface ImageData {
 export function ImageGallery() {
   const { character, deleteImage } = useCharacterStore();
   const { activeProjectId } = useProjectStore();
-
+  
   const [images, setImages] = useState<ImageData[]>([]);
 
   useEffect(() => {
     const loadImages = async () => {
       if (!character || !activeProjectId) {
+        console.log('[ImageGallery] 无角色或无项目，清空图片');
         setImages([]);
         return;
       }
 
+      console.log('[ImageGallery] 加载图片:', character.images, '角色ID:', character.id);
       const loadedImages: ImageData[] = [];
       for (const imageName of character.images) {
         try {
-          // Rust 端已返回完整 data URL
-          const dataUrl = await getImageData(activeProjectId, character.id, imageName);
-          loadedImages.push({ name: imageName, dataUrl });
+          const base64 = await getImageData(activeProjectId, character.id, imageName);
+          // 检测图片类型
+          const ext = imageName.split('.').pop()?.toLowerCase() || 'png';
+          const mimeType = ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' : 
+                           ext === 'gif' ? 'image/gif' : 
+                           ext === 'webp' ? 'image/webp' : 'image/png';
+          loadedImages.push({
+            name: imageName,
+            dataUrl: `data:${mimeType};base64,${base64}`,
+          });
         } catch (error) {
           console.error('加载图片失败:', imageName, error);
         }
       }
       setImages(loadedImages);
+      console.log('[ImageGallery] 已加载图片数:', loadedImages.length);
     };
 
     loadImages();

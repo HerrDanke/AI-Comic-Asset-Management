@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useCharacterStore } from '../stores/characterStore';
 import { useProjectStore } from '../stores/projectStore';
 import { TraitEditor } from './TraitEditor';
@@ -7,20 +7,42 @@ import { VersionHistory } from './VersionHistory';
 import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
 export function CharacterEditor() {
-  const { character, isDirty, updateField, save } = useCharacterStore();
+  const { character, isDirty, updateField, createVersionSnapshot, save } = useCharacterStore();
   const { activeProjectId } = useProjectStore();
-
+  
   const [showVersions, setShowVersions] = useState(false);
+
+  // 自动保存（失焦时创建版本快照）
+  const handleFieldBlur = async (field: string, value: string) => {
+    if (!character) return;
+    
+    if (value !== (character as any)[field]) {
+      await createVersionSnapshot(`修改${getFieldLabel(field)}`);
+    }
+  };
+
+  const getFieldLabel = (field: string): string => {
+    const labels: Record<string, string> = {
+      name: '角色名称',
+      role: '角色定位',
+      positivePrompt: '正向提示词',
+      negativePrompt: '反向提示词',
+      chineseDescription: '中文描述',
+      classicScenes: '经典场景',
+      notes: '备注',
+    };
+    return labels[field] || field;
+  };
 
   const handleImageUpload = async () => {
     if (!activeProjectId) return;
-
+    
     const filePath = await openDialog({
       title: '选择图片',
       filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp'] }],
       multiple: false,
     });
-
+    
     if (filePath && typeof filePath === 'string') {
       const { uploadImage } = useCharacterStore.getState();
       await uploadImage(filePath);
@@ -57,6 +79,7 @@ export function CharacterEditor() {
               type="text"
               value={character.name}
               onChange={(e) => updateField('name', e.target.value)}
+              onBlur={(e) => handleFieldBlur('name', e.target.value)}
               className="text-lg font-semibold bg-transparent border-none text-text-primary focus:outline-none focus:ring-1 focus:ring-accent/50 rounded px-1 -ml-1"
               placeholder="角色名称"
             />
@@ -64,12 +87,13 @@ export function CharacterEditor() {
               type="text"
               value={character.role}
               onChange={(e) => updateField('role', e.target.value)}
+              onBlur={(e) => handleFieldBlur('role', e.target.value)}
               className="block text-sm bg-transparent border-none text-text-muted focus:outline-none focus:ring-1 focus:ring-accent/50 rounded px-1 -ml-1"
               placeholder="角色定位"
             />
           </div>
         </div>
-
+        
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowVersions(!showVersions)}
@@ -81,9 +105,9 @@ export function CharacterEditor() {
           >
             📜 历史 ({character.versions?.length ?? 0})
           </button>
-
+          
           <button
-            onClick={() => save(false)}
+            onClick={save}
             disabled={!isDirty}
             className="px-3 py-1.5 text-xs rounded-md bg-accent text-white hover:bg-accent-hover disabled:opacity-50 transition-colors"
           >
@@ -116,6 +140,7 @@ export function CharacterEditor() {
             <textarea
               value={character.chineseDescription}
               onChange={(e) => updateField('chineseDescription', e.target.value)}
+              onBlur={(e) => handleFieldBlur('chineseDescription', e.target.value)}
               rows={4}
               placeholder="输入角色的中文外貌特征描述..."
               className="w-full px-3 py-2 text-sm rounded-md bg-bg-primary border border-border text-text-primary placeholder:text-text-muted resize-none focus:border-accent"
@@ -128,6 +153,7 @@ export function CharacterEditor() {
             <textarea
               value={character.positivePrompt}
               onChange={(e) => updateField('positivePrompt', e.target.value)}
+              onBlur={(e) => handleFieldBlur('positivePrompt', e.target.value)}
               rows={6}
               placeholder="输入正向提示词（描述角色外貌、服装、武器、气质等）..."
               className="w-full px-3 py-2 text-sm font-mono rounded-md bg-bg-primary border border-border text-text-primary placeholder:text-text-muted resize-none focus:border-accent"
@@ -140,6 +166,7 @@ export function CharacterEditor() {
             <textarea
               value={character.negativePrompt}
               onChange={(e) => updateField('negativePrompt', e.target.value)}
+              onBlur={(e) => handleFieldBlur('negativePrompt', e.target.value)}
               rows={3}
               placeholder="输入反向提示词（排除不需要的元素）..."
               className="w-full px-3 py-2 text-sm font-mono rounded-md bg-bg-primary border border-border text-text-primary placeholder:text-text-muted resize-none focus:border-accent"
@@ -158,6 +185,7 @@ export function CharacterEditor() {
             <textarea
               value={character.classicScenes}
               onChange={(e) => updateField('classicScenes', e.target.value)}
+              onBlur={(e) => handleFieldBlur('classicScenes', e.target.value)}
               rows={2}
               placeholder="输入经典场景描述..."
               className="w-full px-3 py-2 text-sm rounded-md bg-bg-primary border border-border text-text-primary placeholder:text-text-muted resize-none focus:border-accent"
@@ -170,6 +198,7 @@ export function CharacterEditor() {
             <textarea
               value={character.notes}
               onChange={(e) => updateField('notes', e.target.value)}
+              onBlur={(e) => handleFieldBlur('notes', e.target.value)}
               rows={3}
               placeholder="角色性格、关系、经典场景等补充信息..."
               className="w-full px-3 py-2 text-sm rounded-md bg-bg-primary border border-border text-text-primary placeholder:text-text-muted resize-none focus:border-accent"

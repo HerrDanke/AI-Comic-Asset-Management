@@ -1,4 +1,4 @@
-﻿use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
@@ -48,7 +48,7 @@ pub struct Version {
     pub id: String,
     pub timestamp: String,
     pub label: String,
-    pub change_type: String,
+    pub change_type: String, // "auto" or "manual"
     pub snapshot: VersionSnapshot,
 }
 
@@ -135,17 +135,6 @@ fn now_string() -> String {
     chrono::Local::now().to_rfc3339()
 }
 
-// 从 UUID 生成鲜艳的颜色
-fn generate_color() -> String {
-    let id = Uuid::new_v4();
-    let bytes = id.as_bytes();
-    // 使用 UUID 的前3字节作为 RGB，确保颜色足够鲜艳
-    let r = bytes[0];
-    let g = bytes[1];
-    let b = bytes[2];
-    format!("#{:02x}{:02x}{:02x}", r, g, b)
-}
-
 // ============ Tauri 命令 ============
 
 #[tauri::command]
@@ -179,14 +168,14 @@ pub fn list_projects() -> Result<Vec<ProjectMeta>, String> {
 pub fn create_project(name: String, description: String) -> Result<ProjectMeta, String> {
     let project_id = Uuid::new_v4().to_string();
     let now = now_string();
-
+    
     let project = ProjectMeta {
         id: project_id.clone(),
         name,
         description,
         cover_image: None,
         created_at: now.clone(),
-        updated_at: now.clone(),
+        updated_at: now,
         character_ids: Vec::new(),
     };
 
@@ -199,6 +188,15 @@ pub fn create_project(name: String, description: String) -> Result<ProjectMeta, 
 }
 
 #[tauri::command]
+pub fn delete_project(project_id: String) -> Result<(), String> {
+    let project_dir = get_project_dir(&project_id);
+    if project_dir.exists() {
+        fs::remove_dir_all(&project_dir).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_project(project_id: String) -> Result<ProjectMeta, String> {
     let project_file = get_project_dir(&project_id).join("project.json");
     let content = fs::read_to_string(&project_file).map_err(|e| e.to_string())?;
@@ -208,19 +206,11 @@ pub fn get_project(project_id: String) -> Result<ProjectMeta, String> {
 
 #[tauri::command]
 pub fn update_project(project: ProjectMeta) -> Result<(), String> {
-    let project_dir = get_project_dir(&project.id);
-    let project_file = project_dir.join("project.json");
+    let mut project = project;
+    project.updated_at = now_string();
+    let project_file = get_project_dir(&project.id).join("project.json");
     let json = serde_json::to_string_pretty(&project).map_err(|e| e.to_string())?;
     fs::write(&project_file, json).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
-pub fn delete_project(project_id: String) -> Result<(), String> {
-    let project_dir = get_project_dir(&project_id);
-    if project_dir.exists() {
-        fs::remove_dir_all(&project_dir).map_err(|e| e.to_string())?;
-    }
     Ok(())
 }
 
@@ -255,16 +245,20 @@ pub fn get_character(project_id: String, character_id: String) -> Result<Charact
 }
 
 #[tauri::command]
-pub fn save_character(project_id: String, character: CharacterData) -> Result<(), String> {
+pub fn save_character(project_id: String, mut character: CharacterData) -> Result<(), String> {
+    character.updated_at = now_string();
+    
     let char_dir = get_character_dir(&project_id, &character.id);
     let char_file = char_dir.join("character.json");
     let json = serde_json::to_string_pretty(&character).map_err(|e| e.to_string())?;
     fs::write(&char_file, json).map_err(|e| e.to_string())?;
 
-    // 更新项目 updated_at
+    // 更新项目的角色列表
     let mut project = get_project(project_id.clone())?;
-    project.updated_at = now_string();
-    update_project(project)?;
+    if !project.character_ids.contains(&character.id) {
+        project.character_ids.push(character.id);
+        update_project(project)?;
+    }
 
     Ok(())
 }
@@ -273,15 +267,15 @@ pub fn save_character(project_id: String, character: CharacterData) -> Result<()
 pub fn create_character(project_id: String) -> Result<CharacterData, String> {
     let character_id = Uuid::new_v4().to_string();
     let now = now_string();
-
+    
     let character = CharacterData {
-        id: character_id.clone(),
+        id: character_id,
         name: "新角色".to_string(),
         role: String::new(),
-        color: generate_color(),
+        color: "#5b8def".to_string(),
         images: Vec::new(),
         positive_prompt: String::new(),
-        negative_prompt: String::new(),
+        negative_prompt: "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry".to_string(),
         chinese_description: String::new(),
         classic_scenes: String::new(),
         notes: String::new(),
@@ -304,7 +298,7 @@ pub fn create_character(project_id: String) -> Result<CharacterData, String> {
             },
         }],
         created_at: now.clone(),
-        updated_at: now.clone(),
+        updated_at: now,
     };
 
     save_character(project_id, character.clone())?;
@@ -318,6 +312,7 @@ pub fn delete_character(project_id: String, character_id: String) -> Result<(), 
         fs::remove_dir_all(&char_dir).map_err(|e| e.to_string())?;
     }
 
+    // 更新项目的角色列表
     let mut project = get_project(project_id.clone())?;
     project.character_ids.retain(|id| id != &character_id);
     update_project(project)?;
@@ -330,12 +325,12 @@ pub fn save_image(project_id: String, character_id: String, src_path: String) ->
     let src = Path::new(&src_path);
     let ext = src.extension().and_then(|e| e.to_str()).unwrap_or("png");
     let file_name = format!("img_{}.{}", Uuid::new_v4(), ext);
-
+    
     let images_dir = get_images_dir(&project_id, &character_id);
     let dest_path = images_dir.join(&file_name);
-
+    
     fs::copy(src, &dest_path).map_err(|e| e.to_string())?;
-
+    
     Ok(file_name)
 }
 
@@ -366,56 +361,47 @@ pub fn export_project(project_id: String, export_path: String) -> Result<(), Str
     Ok(())
 }
 
-// ── 导入：支持新建（new）和合并（merge）两种模式 ──
-
 #[tauri::command]
-pub fn import_project(
-    import_path: String,
-    mode: String,
-    target_project_id: Option<String>,
-) -> Result<ProjectMeta, String> {
+pub fn import_project(import_path: String, mode: String) -> Result<ProjectMeta, String> {
     let content = fs::read_to_string(&import_path).map_err(|e| e.to_string())?;
     let export: ProjectExport = serde_json::from_str(&content).map_err(|e| e.to_string())?;
 
-    match mode.as_str() {
-        "new" => import_as_new(export),
-        "merge" => {
-            let target_id = target_project_id.ok_or("合并模式需要提供目标项目ID")?;
-            import_merge(export, target_id)
-        }
-        _ => Err(format!("未知的导入模式: {}", mode)),
-    }
-}
+    let new_project_id = if mode == "new" {
+        Uuid::new_v4().to_string()
+    } else {
+        return Err("合并模式需要指定目标项目ID".to_string());
+    };
 
-fn import_as_new(export: ProjectExport) -> Result<ProjectMeta, String> {
-    let new_project_id = Uuid::new_v4().to_string();
     let now = now_string();
     let mut project = export.project;
     project.id = new_project_id.clone();
     project.created_at = now.clone();
-    project.updated_at = now.clone();
-    project.character_ids = Vec::new();
+    project.updated_at = now;
 
+    // 创建项目目录
     let project_dir = get_project_dir(&new_project_id);
     let project_file = project_dir.join("project.json");
     let json = serde_json::to_string_pretty(&project).map_err(|e| e.to_string())?;
     fs::write(&project_file, json).map_err(|e| e.to_string())?;
 
+    // 导入角色
     let mut new_character_ids = Vec::new();
     for mut character in export.characters {
         let new_char_id = Uuid::new_v4().to_string();
         character.id = new_char_id.clone();
         character.created_at = now_string();
         character.updated_at = now_string();
-
+        
+        // 保存角色
         let char_dir = get_character_dir(&new_project_id, &new_char_id);
         let char_file = char_dir.join("character.json");
         let json = serde_json::to_string_pretty(&character).map_err(|e| e.to_string())?;
         fs::write(&char_file, json).map_err(|e| e.to_string())?;
-
+        
         new_character_ids.push(new_char_id);
     }
 
+    // 更新项目角色列表
     project.character_ids = new_character_ids;
     let project_file = project_dir.join("project.json");
     let json = serde_json::to_string_pretty(&project).map_err(|e| e.to_string())?;
@@ -424,59 +410,11 @@ fn import_as_new(export: ProjectExport) -> Result<ProjectMeta, String> {
     Ok(project)
 }
 
-fn import_merge(export: ProjectExport, target_project_id: String) -> Result<ProjectMeta, String> {
-    let now = now_string();
-    let mut project = get_project(target_project_id.clone())?;
-
-    // 检测重名角色并重命名
-    let existing_characters = list_characters(target_project_id.clone())?;
-    let existing_names: Vec<String> = existing_characters.iter().map(|c| c.name.clone()).collect();
-
-    for mut character in export.characters {
-        let original_name = character.name.clone();
-        let mut final_name = original_name.clone();
-        let mut counter = 1;
-        while existing_names.contains(&final_name) {
-            final_name = format!("{} ({})", original_name, counter);
-            counter += 1;
-        }
-
-        let new_char_id = Uuid::new_v4().to_string();
-        character.id = new_char_id.clone();
-        character.name = final_name;
-        character.created_at = now_string();
-        character.updated_at = now_string();
-
-        let char_dir = get_character_dir(&target_project_id, &new_char_id);
-        let char_file = char_dir.join("character.json");
-        let json = serde_json::to_string_pretty(&character).map_err(|e| e.to_string())?;
-        fs::write(&char_file, json).map_err(|e| e.to_string())?;
-
-        project.character_ids.push(new_char_id);
-    }
-
-    project.updated_at = now;
-    update_project(project.clone())?;
-
-    Ok(project)
-}
-
-// ── 返回 data URL 格式（带 MIME 前缀） ──
-
 #[tauri::command]
 pub fn get_image_data(project_id: String, character_id: String, image_name: String) -> Result<String, String> {
     let images_dir = get_images_dir(&project_id, &character_id);
     let image_path = images_dir.join(&image_name);
     let data = fs::read(&image_path).map_err(|e| e.to_string())?;
     let base64 = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &data);
-    let ext = image_name.rsplit('.').next().unwrap_or("png").to_lowercase();
-    let mime = match ext.as_str() {
-        "jpg" | "jpeg" => "image/jpeg",
-        "gif" => "image/gif",
-        "webp" => "image/webp",
-        "svg" => "image/svg+xml",
-        "bmp" => "image/bmp",
-        _ => "image/png",
-    };
-    Ok(format!("data:{};base64,{}", mime, base64))
+    Ok(base64)
 }

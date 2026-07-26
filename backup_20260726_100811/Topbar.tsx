@@ -1,19 +1,17 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useProjectStore } from '../stores/projectStore';
 import { useCharacterStore } from '../stores/characterStore';
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 
 export function Topbar() {
-  const { activeProjectId, projects, getActiveProject, createProject, exportProject, importProject, error: storeError } = useProjectStore();
+  const { activeProjectId, getActiveProject, createProject, exportProject, importProject, error: storeError } = useProjectStore();
   const { character, isDirty, createVersionSnapshot } = useCharacterStore();
-
+  
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newProjectDesc, setNewProjectDesc] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
-  const [showImportOptions, setShowImportOptions] = useState(false);
-  const [importFilePath, setImportFilePath] = useState<string | null>(null);
-
+  
   const project = getActiveProject();
 
   const handleCreateProject = async () => {
@@ -32,53 +30,27 @@ export function Topbar() {
 
   const handleExport = async () => {
     if (!activeProjectId) return;
-
+    
     const filePath = await saveDialog({
       title: '导出项目',
       defaultPath: `${project?.name || 'project'}_export.json`,
       filters: [{ name: 'JSON', extensions: ['json'] }],
     });
-
+    
     if (filePath) {
       await exportProject(filePath);
     }
   };
 
-  // ── 导入：先选择文件，再选择模式 ──
-  const handleImportSelect = async () => {
+  const handleImport = async () => {
     const filePath = await openDialog({
       title: '导入项目',
       filters: [{ name: 'JSON', extensions: ['json'] }],
       multiple: false,
     });
-
+    
     if (filePath && typeof filePath === 'string') {
-      setImportFilePath(filePath);
-      setShowImportOptions(true);
-    }
-  };
-
-  const handleImportAsNew = async () => {
-    if (!importFilePath) return;
-    try {
-      await importProject(importFilePath, 'new');
-      setShowImportOptions(false);
-      setImportFilePath(null);
-    } catch (err) {
-      console.error('导入失败:', err);
-      setLocalError(String(err));
-    }
-  };
-
-  const handleImportMerge = async (targetProjectId: string) => {
-    if (!importFilePath) return;
-    try {
-      await importProject(importFilePath, 'merge', targetProjectId);
-      setShowImportOptions(false);
-      setImportFilePath(null);
-    } catch (err) {
-      console.error('合并失败:', err);
-      setLocalError(String(err));
+      await importProject(filePath);
     }
   };
 
@@ -113,14 +85,14 @@ export function Topbar() {
         >
           + 新建项目
         </button>
-
+        
         <button
-          onClick={handleImportSelect}
+          onClick={handleImport}
           className="px-3 py-1.5 text-xs rounded-md bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border transition-colors"
         >
           导入
         </button>
-
+        
         <button
           onClick={handleExport}
           disabled={!activeProjectId}
@@ -176,54 +148,6 @@ export function Topbar() {
                 className="px-4 py-2 text-xs rounded-md bg-accent text-white hover:bg-accent-hover disabled:opacity-50"
               >
                 创建
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 导入选项对话框 */}
-      {showImportOptions && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-[480px] p-6 rounded-lg bg-bg-secondary border border-border">
-            <h2 className="text-sm font-semibold text-text-primary mb-4">选择导入方式</h2>
-
-            <div className="space-y-3">
-              {/* 作为新项目 */}
-              <button
-                onClick={handleImportAsNew}
-                className="w-full p-4 rounded-lg bg-bg-primary border border-border hover:border-accent/50 text-left transition-colors"
-              >
-                <div className="text-sm font-medium text-text-primary">作为新项目导入</div>
-                <div className="text-xs text-text-muted mt-1">创建一个独立的项目副本</div>
-              </button>
-
-              {/* 合并到现有项目 */}
-              {projects.length > 0 && (
-                <div className="p-4 rounded-lg bg-bg-primary border border-border">
-                  <div className="text-sm font-medium text-text-primary mb-2">合并到现有项目</div>
-                  <div className="text-xs text-text-muted mb-2">重名角色将自动重命名</div>
-                  <div className="space-y-1 max-h-32 overflow-y-auto">
-                    {projects.map(p => (
-                      <button
-                        key={p.id}
-                        onClick={() => handleImportMerge(p.id)}
-                        className="w-full px-3 py-2 text-xs rounded bg-bg-secondary hover:bg-accent/20 text-text-secondary hover:text-text-primary text-left transition-colors"
-                      >
-                        {p.name} ({p.characterIds.length} 个角色)
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="flex justify-end mt-4">
-              <button
-                onClick={() => { setShowImportOptions(false); setImportFilePath(null); }}
-                className="px-4 py-2 text-xs rounded-md bg-bg-tertiary text-text-secondary hover:text-text-primary"
-              >
-                取消
               </button>
             </div>
           </div>
