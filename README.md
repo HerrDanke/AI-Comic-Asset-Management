@@ -1,4 +1,4 @@
-# AI漫剧角色库 (AIComicCharacterDB)
+﻿# AI漫剧角色库 (AIComicCharacterDB)
 
 基于 Tauri 2.x 构建的桌面端 AI 漫剧角色资产管理系统，专为漫剧创作团队设计。
 
@@ -32,31 +32,31 @@
 
 ### 安装依赖
 
-```bash
+`ash
 npm install
-```
+`
 
 ### 开发模式
 
-```bash
+`ash
 npm run tauri:dev
-```
+`
 
 ### 构建生产版本
 
-```bash
+`ash
 npm run tauri:build
-```
+`
 
 ### 构建并复制安装包到项目根目录
 
-```bash
+`ash
 npm run tauri:build:copy
-```
+`
 
 ## 项目结构
 
-```
+`
 ai-comic-character-db/
 ├── src/                    # React 前端源码
 │   ├── components/         # UI 组件
@@ -69,7 +69,7 @@ ai-comic-character-db/
 ├── scripts/                # 构建脚本
 ├── package.json
 └── vite.config.ts
-```
+`
 
 ## 使用说明
 
@@ -78,17 +78,48 @@ ai-comic-character-db/
 3. **编辑角色** — 点击角色卡片进入编辑模式，修改属性
 4. **管理图片** — 在图片画廊中上传、查看角色图片
 5. **版本控制** — 底部面板查看版本历史，支持回滚
-6. **导入导出** — 通过顶部菜单将项目导出为文件
+6. **导入导出** — 通过顶部菜单将项目导出为文件（支持作为新项目导入或合并到现有项目）
 
 ## 数据存储
 
-- 项目数据存储在用户选择的目录中
+- 项目数据存储在用户主目录 ~/AIComicCharacterDB/projects/ 中
 - 每个项目独立文件夹，包含角色数据和图片资源
-- 支持项目间的导入导出
+- 支持项目间的导入导出，合并时自动重命名重复角色
 
 ## 版本历史
 
-- **v1.0.0** — 初始版本，包含基础角色管理、图片画廊、版本控制功能
+### v1.0.1 — 稳定性优化与功能完善 (2026-07-26)
+
+**核心问题修复：**
+- 🔴 **修复双 store 同步机制** — characterStore 与 projectStore 之间的数据同步重构，写盘成功后明确同步回 projectStore，确保数据一致性
+- 🔴 **修复关闭窗口数据丢失** — 新增关闭前自动保存机制，脏数据时先保存再关闭
+
+**功能优化：**
+- 🚀 **写入队列防止并发竞争** — 所有写入操作通过 Promise 链式队列串行化，避免 JSON 文件并发写入冲突
+- 🚀 **导入合并模式实现** — 支持"作为新项目导入"和"合并到现有项目"两种模式，合并时自动检测重名并添加序号后缀
+- 🚀 **getImageData 返回 data URL** — Rust 端自动检测图片格式并返回完整的 data:image/...;base64,... 格式，前端无需手动拼接 MIME
+- 🚀 **自动保存策略优化** — 新增定时保存（每30秒）和失焦保存（切换应用时），编辑器失焦仅静默保存不再产生冗余版本快照
+
+**变更文件：**
+- src/stores/characterStore.ts — 双 store 同步修复
+- src/stores/projectStore.ts — 导入合并模式支持
+- src/utils/tauri.ts — 写入队列 + 导入合并 API
+- src/App.tsx — 自动保存机制（关闭前/定时/失焦）
+- src/components/Topbar.tsx — 导入对话框
+- src/components/CharacterEditor.tsx — 失焦保存策略调整
+- src/components/ImageGallery.tsx — 适配 data URL
+- src-tauri/src/commands.rs — 合并导入 + data URL + UUID 颜色生成
+
+---
+
+### v1.0.0 — 初始版本
+
+- 基础角色管理（增删改查、搜索筛选）
+- 图片画廊（上传、查看、删除）
+- 评论式性格特征编辑
+- 版本控制（自动快照 + 手动快照 + 回滚）
+- 项目导入导出
+- Windows 安装包构建（NSIS / MSI）
 
 ## License
 
