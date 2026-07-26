@@ -5,11 +5,10 @@ import { ProjectSidebar } from './components/ProjectSidebar';
 import { CharacterList } from './components/CharacterList';
 import { CharacterEditor } from './components/CharacterEditor';
 import { Topbar } from './components/Topbar';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 
 function App() {
   const { loadProjects, activeProjectId } = useProjectStore();
-  const { syncFromStore, save, isDirty } = useCharacterStore();
+  const { syncFromStore } = useCharacterStore();
 
   useEffect(() => {
     loadProjects();
@@ -18,17 +17,6 @@ function App() {
   useEffect(() => {
     syncFromStore();
   }, [activeProjectId, syncFromStore]);
-
-  // 关闭前自动保存
-  useEffect(() => {
-    const window = getCurrentWindow();
-    const unlisten = window.onCloseRequested(async () => {
-      if (isDirty) {
-        await save(false);
-      }
-    });
-    return () => { unlisten.then(fn => fn()); };
-  }, [isDirty, save]);
 
   // 定期自动保存（每30秒）
   useEffect(() => {

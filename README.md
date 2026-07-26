@@ -6,6 +6,7 @@
 
 - **项目管理** — 创建、导入、导出项目文件
 - **角色管理** — 添加、编辑、删除角色，支持搜索筛选
+- **角色排序** — 拖拽角色卡片调整顺序，自动保存
 - **属性编辑** — 角色名称、描述、特性等多维度信息管理
 - **图片画廊** — 角色图片资源管理
 - **版本历史** — 自动保存版本快照，支持回溯
@@ -20,43 +21,55 @@
 | 状态管理 | Zustand |
 | 构建工具 | Vite 5 |
 | 桌面框架 | Tauri 2.x (Rust) |
-| 打包格式 | NSIS / MSI (Windows) |
+| 打包格式 | MSI / NSIS (Windows) |
 
 ## 快速开始
 
-### 环境要求
+### 方式 1：使用安装包（推荐）
 
-- Node.js 18+
-- Rust (通过 rustup 安装)
-- WebView2 Runtime (Windows 自带)
+在 [Releases](https://github.com/你的用户名/ai-comic-character-db/releases) 页面下载最新版本的安装包：
 
-### 安装依赖
+- **MSI 安装包**：AIComicCharacterDB_x.x.x_x64.msi - 双击安装
+- **NSIS 安装包**：AIComicCharacterDB_x.x.x_x64-setup.exe - 双击安装
 
-```bash
+安装后从开始菜单或桌面快捷方式启动应用。
+
+> **注意**：首次运行需要安装 [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/)（Windows 11 已自带）。
+
+### 方式 2：从源码构建
+
+#### 环境要求
+
+- [Node.js](https://nodejs.org/) 18+
+- [Rust](https://www.rust-lang.org/tools/install) (通过 rustup 安装)
+- [WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/) (Windows 11 已自带)
+- [WiX Toolset](https://wixtoolset.org/) v3.14+ (仅构建 MSI 安装包需要)
+
+#### 构建步骤
+
+`ash
+# 1. 克隆仓库
+git clone https://github.com/你的用户名/ai-comic-character-db.git
+cd ai-comic-character-db
+
+# 2. 安装依赖
 npm install
-```
 
-### 开发模式
-
-```bash
+# 3. 开发模式（热更新）
 npm run tauri:dev
-```
 
-### 构建生产版本
-
-```bash
+# 4. 构建生产版本
 npm run tauri:build
-```
+`
 
-### 构建并复制安装包到项目根目录
-
-```bash
-npm run tauri:build:copy
-```
+构建完成后，安装包位于 src-tauri/target/release/bundle/ 目录下：
+- msi/AIComicCharacterDB_x.x.x_x64_en-US.msi - MSI 安装包
+- 
+sis/AIComicCharacterDB_x.x.x_x64-setup.exe - NSIS 安装包
 
 ## 项目结构
 
-```
+`
 ai-comic-character-db/
 ├── src/                    # React 前端源码
 │   ├── components/         # UI 组件
@@ -69,16 +82,17 @@ ai-comic-character-db/
 ├── scripts/                # 构建脚本
 ├── package.json
 └── vite.config.ts
-```
+`
 
 ## 使用说明
 
 1. **创建项目** — 首次使用点击"新建项目"，设置项目名称和存储路径
 2. **添加角色** — 点击角色列表的"+ 添加"按钮创建新角色
 3. **编辑角色** — 点击角色卡片进入编辑模式，修改属性
-4. **管理图片** — 在图片画廊中上传、查看角色图片
-5. **版本控制** — 底部面板查看版本历史，支持回滚
-6. **导入导出** — 通过顶部菜单将项目导出为文件（支持作为新项目导入或合并到现有项目）
+4. **排序角色** — 按住角色卡片拖动到目标位置，自动保存顺序
+5. **管理图片** — 在图片画廊中上传、查看角色图片
+6. **版本控制** — 底部面板查看版本历史，支持回滚
+7. **导入导出** — 通过顶部菜单将项目导出为文件（支持作为新项目导入或合并到现有项目）
 
 ## 数据存储
 
@@ -88,7 +102,10 @@ ai-comic-character-db/
 
 ## 版本历史
 
-### v1.0.1 — 稳定性优化与功能完善 (2026-07-26)
+### v1.0.2 — 拖拽排序与稳定性优化 (2026-07-26)
+
+**新功能：**
+- 🎯 **角色拖拽排序** — 支持拖拽角色卡片调整顺序，CSS transform 实现流畅动画
 
 **核心问题修复：**
 - 🔴 **修复双 store 同步机制** — characterStore 与 projectStore 之间的数据同步重构，写盘成功后明确同步回 projectStore，确保数据一致性
@@ -102,10 +119,11 @@ ai-comic-character-db/
 
 **变更文件：**
 - src/stores/characterStore.ts — 双 store 同步修复
-- src/stores/projectStore.ts — 导入合并模式支持
+- src/stores/projectStore.ts — 导入合并模式支持 + 角色排序
 - src/utils/tauri.ts — 写入队列 + 导入合并 API
 - src/App.tsx — 自动保存机制（关闭前/定时/失焦）
 - src/components/Topbar.tsx — 导入对话框
+- src/components/CharacterList.tsx — 拖拽排序
 - src/components/CharacterEditor.tsx — 失焦保存策略调整
 - src/components/ImageGallery.tsx — 适配 data URL
 - src-tauri/src/commands.rs — 合并导入 + data URL + UUID 颜色生成
@@ -119,7 +137,7 @@ ai-comic-character-db/
 - 评论式性格特征编辑
 - 版本控制（自动快照 + 手动快照 + 回滚）
 - 项目导入导出
-- Windows 安装包构建（NSIS / MSI）
+- Windows 安装包构建（MSI / NSIS）
 
 ## License
 

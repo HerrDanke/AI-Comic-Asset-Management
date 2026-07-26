@@ -21,6 +21,8 @@ interface ProjectState {
   switchCharacter: (id: string | null) => void;
   refreshActiveCharacter: () => Promise<void>;
 
+  reorderCharacters: (fromIndex: number, toIndex: number) => Promise<void>;
+
   exportProject: (exportPath: string) => Promise<void>;
   importProject: (importPath: string, mode: string, targetProjectId?: string) => Promise<void>;
 
@@ -168,6 +170,43 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }));
     } catch (error) {
       console.error('刷新角色失败:', error);
+    }
+  },
+
+  // ── 拖拽重排序角色 ──
+  reorderCharacters: async (fromIndex, toIndex) => {
+    const { characters, activeProjectId } = get();
+    if (!activeProjectId || fromIndex === toIndex) return;
+
+    // 创建新数组并执行移动
+    const newCharacters = [...characters];
+    const [moved] = newCharacters.splice(fromIndex, 1);
+    newCharacters.splice(toIndex, 0, moved);
+
+    // 立即更新本地状态（乐观更新）
+    set({ characters: newCharacters });
+
+    // 同步到后端：更新项目的 characterIds 顺序
+    try {
+      const { projects } = get();
+      const project = projects.find(p => p.id === activeProjectId);
+      if (project) {
+        const updatedProject = {
+          ...project,
+          characterIds: newCharacters.map(c => c.id),
+          updatedAt: new Date().toISOString(),
+        };
+        await api.updateProject(updatedProject);
+        set(state => ({
+          projects: state.projects.map(p =>
+            p.id === activeProjectId ? updatedProject : p
+          ),
+        }));
+      }
+    } catch (error) {
+      console.error('保存角色顺序失败:', error);
+      // 失败时回滚（重新加载角色）
+      await get().loadCharacters(activeProjectId);
     }
   },
 

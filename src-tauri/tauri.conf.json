@@ -1,6 +1,6 @@
 {
   "productName": "AIComicCharacterDB",
-  "version": "0.1.0",
+  "version": "1.0.2",
   "identifier": "com.aicomidb.app",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -20,7 +20,9 @@
     ],
     "security": {
       "csp": null,
-      "capabilities": ["default"]
+      "capabilities": [
+        "default"
+      ]
     }
   },
   "bundle": {

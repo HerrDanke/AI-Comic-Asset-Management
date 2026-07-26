@@ -1,4 +1,4 @@
-<longcat_arg_value># 依赖
+﻿# 依赖
 node_modules/
 .pnpm-store/
 
@@ -49,3 +49,14 @@ dist-installer/
 *.tmp
 *.temp
 .bitfun/
+
+# 构建产物
+*.exe
+*.msi
+*.dll
+
+# 备份文件
+backup_/
+
+# Cargo 配置（包含本地路径）
+.cargo/
