@@ -27,7 +27,7 @@
 
 ### 方式 1：使用安装包（推荐）
 
-在 [Releases](https://github.com/你的用户名/ai-comic-character-db/releases) 页面下载最新版本的安装包：
+在 [Releases]([Releases · HerrDanke/AI-Comic-Asset-Management](https://github.com/HerrDanke/AI-Comic-Asset-Management/releases)) 页面下载最新版本的安装包：
 
 - **MSI 安装包**：AIComicCharacterDB_x.x.x_x64.msi - 双击安装
 - **NSIS 安装包**：AIComicCharacterDB_x.x.x_x64-setup.exe - 双击安装
@@ -48,6 +48,7 @@
 #### 构建步骤
 
 `ash
+
 # 1. 克隆仓库
 git clone https://github.com/你的用户名/ai-comic-character-db.git
 cd ai-comic-character-db
@@ -106,6 +107,12 @@ ai-comic-character-db/
 
 **新功能：**
 - 🎯 **角色拖拽排序** — 支持拖拽角色卡片调整顺序，CSS transform 实现流畅动画
+
+------
+
+
+
+### v1.0.1 — 优化 (2026-07-26)
 
 **核心问题修复：**
 - 🔴 **修复双 store 同步机制** — characterStore 与 projectStore 之间的数据同步重构，写盘成功后明确同步回 projectStore，确保数据一致性
