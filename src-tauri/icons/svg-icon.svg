@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="shineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
+    </linearGradient>
+    <linearGradient id="comicGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b6b"/>
+      <stop offset="100%" style="stop-color:#ee5a5a"/>
+    </linearGradient>
+    <linearGradient id="aiGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4ecdc4"/>
+      <stop offset="100%" style="stop-color:#44a08d"/>
+    </linearGradient>
+  </defs>
+  <rect x="32" y="32" width="448" height="448" rx="96" ry="96" fill="url(#bgGradient)"/>
+  <rect x="32" y="32" width="448" height="224" rx="96" ry="96" fill="url(#shineGradient)"/>
+  <path d="M128 160 L384 160 Q384 160 384 180 L384 290 Q384 310 364 310 L280 310 L240 360 L240 310 L148 310 Q128 310 128 290 Z" fill="white" stroke="#e0e0e0" stroke-width="4"/>
+  <circle cx="256" cy="235" r="45" fill="url(#aiGradient)"/>
+  <circle cx="256" cy="235" r="35" fill="none" stroke="white" stroke-width="3" stroke-dasharray="8 4"/>
+  <text x="256" y="245" font-family="Arial, sans-serif" font-size="42" font-weight="bold" fill="white" text-anchor="middle">AI</text>
+  <circle cx="175" cy="235" r="8" fill="url(#comicGradient)"/>
+  <circle cx="337" cy="235" r="8" fill="url(#comicGradient)"/>
+  <circle cx="256" cy="180" r="8" fill="url(#comicGradient)"/>
+  <circle cx="256" cy="290" r="8" fill="url(#comicGradient)"/>
+  <line x1="175" y1="235" x2="221" y2="235" stroke="url(#aiGradient)" stroke-width="3"/>
+  <line x1="291" y1="235" x2="337" y2="235" stroke="url(#aiGradient)" stroke-width="3"/>
+  <line x1="256" y1="180" x2="256" y2="200" stroke="url(#aiGradient)" stroke-width="3"/>
+  <line x1="256" y1="270" x2="256" y2="290" stroke="url(#aiGradient)" stroke-width="3"/>
+  <polygon points="350,100 358,120 380,120 362,132 370,152 350,140 330,152 338,132 320,120 342,120" fill="#ffd700"/>
+  <polygon points="160,120 165,132 178,132 168,140 172,152 160,144 148,152 152,140 142,132 155,132" fill="#ffd700" opacity="0.8"/>
+  <circle cx="180" cy="400" r="12" fill="#ffd700" opacity="0.9"/>
+  <circle cx="256" cy="420" r="15" fill="#ff6b6b" opacity="0.8"/>
+  <circle cx="332" cy="400" r="12" fill="#4ecdc4" opacity="0.9"/>
+  <line x1="80" y1="350" x2="120" y2="370" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="70" y1="380" x2="110" y2="390" stroke="white" stroke-width="2" opacity="0.4"/>
+  <line x1="432" y1="350" x2="392" y2="370" stroke="white" stroke-width="2" opacity="0.5"/>
+  <line x1="442" y1="380" x2="402" y2="390" stroke="white" stroke-width="2" opacity="0.4"/>
+</svg>
