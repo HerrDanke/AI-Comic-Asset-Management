@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod constants;
 
 fn main() {
     ai_comic_character_db_lib::run()

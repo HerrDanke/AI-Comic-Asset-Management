@@ -1,11 +1,12 @@
 ﻿import { useState } from 'react';
 import { useProjectStore } from '../stores/projectStore';
 import { useCharacterStore } from '../stores/characterStore';
+import { useSettingsStore, SaveInterval } from '../stores/settingsStore';
 import { open as openDialog, save as saveDialog } from '@tauri-apps/plugin-dialog';
 
 export function Topbar() {
   const { activeProjectId, projects, getActiveProject, createProject, exportProject, importProject, error: storeError } = useProjectStore();
-  const { character, isDirty, createVersionSnapshot } = useCharacterStore();
+  const { character, isDirty, createVersionSnapshot, canUndo, canRedo, undo, redo } = useCharacterStore();
 
   const [showNewProject, setShowNewProject] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -13,6 +14,8 @@ export function Topbar() {
   const [localError, setLocalError] = useState<string | null>(null);
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [importFilePath, setImportFilePath] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const { saveInterval, blurSaveEnabled, setSaveInterval, setBlurSaveEnabled } = useSettingsStore();
 
   const project = getActiveProject();
 
@@ -137,7 +140,81 @@ export function Topbar() {
         >
           📸 快照
         </button>
+
+        <button
+          onClick={undo}
+          disabled={!canUndo()}
+          className="px-3 py-1.5 text-xs rounded-md bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border transition-colors disabled:opacity-50"
+          title="撤销 (Ctrl+Z)"
+        >
+          ↩️ 撤销
+        </button>
+
+        <button
+          onClick={redo}
+          disabled={!canRedo()}
+          className="px-3 py-1.5 text-xs rounded-md bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border transition-colors disabled:opacity-50"
+          title="重做 (Ctrl+Y)"
+        >
+          ↪️ 重做
+        </button>
+
+        <button
+          onClick={() => setShowSettings(true)}
+          className="px-3 py-1.5 text-xs rounded-md bg-bg-tertiary text-text-secondary hover:text-text-primary border border-border transition-colors"
+          title="设置"
+        >
+          ⚙️ 设置
+        </button>
       </div>
+
+      {/* 设置对话框 */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-96 p-6 rounded-lg bg-bg-secondary border border-border">
+            <h2 className="text-sm font-semibold text-text-primary mb-4">设置</h2>
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs text-text-muted block mb-2">自动保存间隔</label>
+                <select
+                  value={saveInterval}
+                  onChange={(e) => setSaveInterval(Number(e.target.value) as SaveInterval)}
+                  className="w-full px-3 py-2 text-sm rounded-md bg-bg-primary border border-border text-text-primary"
+                >
+                  <option value={10000}>10 秒</option>
+                  <option value={30000}>30 秒</option>
+                  <option value={60000}>60 秒</option>
+                  <option value={0}>手动</option>
+                </select>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="text-xs text-text-muted">失焦时自动保存</label>
+                <button
+                  onClick={() => setBlurSaveEnabled(!blurSaveEnabled)}
+                  className={`px-3 py-1 text-xs rounded border transition-colors ${
+                    blurSaveEnabled
+                      ? 'bg-accent/20 border-accent/30 text-accent'
+                      : 'bg-bg-tertiary border-border text-text-secondary'
+                  }`}
+                >
+                  {blurSaveEnabled ? '已开启' : '已关闭'}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end mt-4">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="px-4 py-2 text-xs rounded-md bg-bg-tertiary text-text-secondary hover:text-text-primary"
+              >
+                关闭
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 新建项目对话框 */}
       {showNewProject && (

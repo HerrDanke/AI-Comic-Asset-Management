@@ -6,7 +6,14 @@ export interface Trait {
   updatedAt: string;
 }
 
-// 版本快照
+// 版本快照中的变更字段
+export interface VersionDiff {
+  field: string;
+  oldValue: string;
+  newValue: string;
+}
+
+// 版本快照（diff 模式）
 export interface VersionSnapshot {
   name: string;
   role: string;
@@ -17,6 +24,10 @@ export interface VersionSnapshot {
   notes: string;
   traits: Trait[];
   images: string[];
+  // 新增：diff 存储
+  diffs?: VersionDiff[];
+  // 标记是否为完整快照（兼容旧数据）
+  isFullSnapshot: boolean;
 }
 
 // 版本
@@ -46,6 +57,15 @@ export interface CharacterData {
   updatedAt: string;
 }
 
+// 角色摘要（列表用）
+export interface CharacterSummary {
+  id: string;
+  name: string;
+  role: string;
+  color: string;
+  updatedAt: string;
+}
+
 // 项目元数据
 export interface ProjectMeta {
   id: string;
@@ -66,7 +86,7 @@ export interface ProjectExport {
 }
 
 // 变更差异
-export interface VersionDiff {
+export interface VersionDiffItem {
   field: string;
   oldValue: string;
   newValue: string;

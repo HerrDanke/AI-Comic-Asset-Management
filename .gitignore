@@ -1,4 +1,4 @@
-﻿# 依赖
+# 依赖
 node_modules/
 .pnpm-store/
 
@@ -60,3 +60,9 @@ backup_/
 
 # Cargo 配置（包含本地路径）
 .cargo/
+
+# 测试覆盖率
+coverage/
+
+# Vite 缓存
+.vite/

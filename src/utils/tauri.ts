@@ -1,18 +1,34 @@
 ﻿import { invoke } from '@tauri-apps/api/core';
 import {
   CharacterData,
+  CharacterSummary,
   ProjectMeta,
 } from '../types';
 
 // ══════════════════════════════════════════════════════════════
-// 写入队列：防止 JSON 文件并发写入竞争
+// 写入队列：按资源分桶，防止 JSON 文件并发写入竞争
 // ══════════════════════════════════════════════════════════════
-let writeQueue: Promise<any> = Promise.resolve();
+const resourceQueues = new Map<string, Promise<any>>();
 
-function enqueue<T>(task: () => Promise<T>): Promise<T> {
-  const run = writeQueue.then(task, task);
-  writeQueue = run.catch(() => {});
+function getQueue(key: string): Promise<any> {
+  let queue = resourceQueues.get(key);
+  if (!queue) {
+    queue = Promise.resolve();
+    resourceQueues.set(key, queue);
+  }
+  return queue;
+}
+
+function enqueue<T>(task: () => Promise<T>, resourceKey: string = 'global'): Promise<T> {
+  const queue = getQueue(resourceKey);
+  const run = queue.then(task, task);
+  const newQueue = run.catch(() => {});
+  resourceQueues.set(resourceKey, newQueue);
   return run;
+}
+
+function getCharacterResourceKey(projectId: string, characterId?: string): string {
+  return characterId ? `char:${projectId}:${characterId}` : `project:${projectId}`;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -51,20 +67,24 @@ export async function listCharacters(projectId: string): Promise<CharacterData[]
   return invoke<CharacterData[]>('list_characters', { projectId });
 }
 
+export async function listCharacterSummaries(projectId: string): Promise<CharacterSummary[]> {
+  return invoke<CharacterSummary[]>('list_character_summaries', { projectId });
+}
+
 export async function getCharacter(projectId: string, characterId: string): Promise<CharacterData> {
   return invoke<CharacterData>('get_character', { projectId, characterId });
 }
 
 export async function saveCharacter(projectId: string, character: CharacterData): Promise<void> {
-  return enqueue(() => invoke<void>('save_character', { projectId, character }));
+  return enqueue(() => invoke<void>('save_character', { projectId, character }), getCharacterResourceKey(projectId, character.id));
 }
 
 export async function createCharacter(projectId: string): Promise<CharacterData> {
-  return enqueue(() => invoke<CharacterData>('create_character', { projectId }));
+  return enqueue(() => invoke<CharacterData>('create_character', { projectId }), getCharacterResourceKey(projectId));
 }
 
 export async function deleteCharacter(projectId: string, characterId: string): Promise<void> {
-  return enqueue(() => invoke<void>('delete_character', { projectId, characterId }));
+  return enqueue(() => invoke<void>('delete_character', { projectId, characterId }), getCharacterResourceKey(projectId, characterId));
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -76,7 +96,7 @@ export async function saveImage(
   characterId: string,
   srcPath: string
 ): Promise<string> {
-  return enqueue(() => invoke<string>('save_image', { projectId, characterId, srcPath }));
+  return enqueue(() => invoke<string>('save_image', { projectId, characterId, srcPath }), getCharacterResourceKey(projectId, characterId));
 }
 
 export async function deleteImage(
@@ -84,7 +104,7 @@ export async function deleteImage(
   characterId: string,
   imageName: string
 ): Promise<void> {
-  return enqueue(() => invoke<void>('delete_image', { projectId, characterId, imageName }));
+  return enqueue(() => invoke<void>('delete_image', { projectId, characterId, imageName }), getCharacterResourceKey(projectId, characterId));
 }
 
 export async function getImageData(
@@ -93,6 +113,14 @@ export async function getImageData(
   imageName: string
 ): Promise<string> {
   return invoke<string>('get_image_data', { projectId, characterId, imageName });
+}
+
+export async function getThumbnailData(
+  projectId: string,
+  characterId: string,
+  imageName: string
+): Promise<string> {
+  return invoke<string>('get_thumbnail_data', { projectId, characterId, imageName });
 }
 
 // ══════════════════════════════════════════════════════════════

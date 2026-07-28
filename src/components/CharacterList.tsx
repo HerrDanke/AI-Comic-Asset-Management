@@ -10,13 +10,17 @@ interface Character {
 }
 
 export function CharacterList() {
-  const { characters, activeCharacterId, switchCharacter, createCharacter, deleteCharacter, reorderCharacters } = useProjectStore();
-  const { syncFromStore } = useCharacterStore();
+  const { characterSummaries, activeCharacterId, switchCharacter, createCharacter, deleteCharacter, reorderCharacters, deleteCharacters } = useProjectStore();
+  const { loadCharacter } = useCharacterStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [showSearchHistory, setShowSearchHistory] = useState(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -32,17 +36,27 @@ export function CharacterList() {
   });
 
   const filteredCharacters = searchQuery.trim()
-    ? characters.filter(c =>
+    ? characterSummaries.filter(c =>
         c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         c.role.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : characters;
+    : characterSummaries;
 
   const handleSelect = (id: string) => {
     if (dragState.current.isDragging) return;
     switchCharacter(id);
-    syncFromStore();
+    loadCharacter(id);
   };
+
+  // 搜索历史
+  useEffect(() => {
+    if (searchQuery.trim().length >= 2) {
+      setSearchHistory(prev => {
+        const filtered = prev.filter(q => q !== searchQuery.trim());
+        return [searchQuery.trim(), ...filtered].slice(0, 10);
+      });
+    }
+  }, [searchQuery]);
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -119,8 +133,8 @@ export function CharacterList() {
       if (!state.draggedId) return;
 
       if (state.isDragging && dragOverId && dragOverId !== state.draggedId) {
-        const fromIndex = characters.findIndex(c => c.id === state.draggedId);
-        const toIndex = characters.findIndex(c => c.id === dragOverId);
+        const fromIndex = characterSummaries.findIndex(c => c.id === state.draggedId);
+        const toIndex = characterSummaries.findIndex(c => c.id === dragOverId);
         if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
           await reorderCharacters(fromIndex, toIndex);
         }
@@ -139,27 +153,75 @@ export function CharacterList() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [dragOverId, characters, getDropTargetId, reorderCharacters]);
+  }, [dragOverId, characterSummaries, getDropTargetId, reorderCharacters]);
 
   return (
     <aside className="w-72 flex-shrink-0 bg-bg-secondary border-r border-border flex flex-col">
       <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-xs font-semibold text-text-muted uppercase tracking-wider">角色列表</h2>
-          <button
-            onClick={createCharacter}
-            className="px-2 py-1 text-xs rounded bg-accent text-white hover:bg-accent-hover"
-          >
-            + 添加
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setIsMultiSelectMode(!isMultiSelectMode)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                isMultiSelectMode ? 'bg-accent/20 text-accent' : 'bg-bg-tertiary text-text-secondary hover:text-text-primary'
+              }`}
+              title="多选模式"
+            >
+              {isMultiSelectMode ? '✓ 多选' : '○ 多选'}
+            </button>
+            <button
+              onClick={createCharacter}
+              className="px-2 py-1 text-xs rounded bg-accent text-white hover:bg-accent-hover"
+            >
+              + 添加
+            </button>
+          </div>
         </div>
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="搜索角色..."
-          className="w-full px-3 py-1.5 text-xs rounded-md bg-bg-primary border border-border text-text-primary placeholder:text-text-muted"
-        />
+        
+        {/* 搜索框 + 历史 */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setShowSearchHistory(true)}
+            onBlur={() => setTimeout(() => setShowSearchHistory(false), 200)}
+            placeholder="搜索角色..."
+            className="w-full px-3 py-1.5 text-xs rounded-md bg-bg-primary border border-border text-text-primary placeholder:text-text-muted"
+          />
+          {showSearchHistory && searchHistory.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-bg-primary border border-border rounded-md shadow-lg z-10 max-h-32 overflow-y-auto">
+              {searchHistory.map((query, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => { setSearchQuery(query); setShowSearchHistory(false); }}
+                  className="w-full px-3 py-1.5 text-xs text-text-secondary hover:bg-bg-tertiary text-left"
+                >
+                  {query}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* 批量操作栏 */}
+        {isMultiSelectMode && selectedIds.size > 0 && (
+          <div className="mt-2 p-2 bg-bg-tertiary rounded flex items-center justify-between">
+            <span className="text-xs text-text-secondary">已选 {selectedIds.size} 个</span>
+            <button
+              onClick={async () => {
+                if (confirm(`确定删除选中的 ${selectedIds.size} 个角色吗？`)) {
+                  await deleteCharacters(Array.from(selectedIds));
+                  setSelectedIds(new Set());
+                }
+              }}
+              className="px-2 py-1 text-xs rounded bg-red-500/20 text-red-400 hover:bg-red-500/30"
+            >
+              批量删除
+            </button>
+          </div>
+        )}
       </div>
 
       <div ref={containerRef} className="flex-1 overflow-y-auto p-2 relative">
@@ -172,19 +234,39 @@ export function CharacterList() {
             {filteredCharacters.map((char) => {
               const isDragged = draggedId === char.id;
               const isDragOver = dragOverId === char.id;
+              const isSelected = selectedIds.has(char.id);
 
               return (
                 <div
                   key={char.id}
                   ref={(el) => { if (el) itemRefs.current.set(char.id, el); }}
                   onMouseDown={(e) => handleMouseDown(e, char)}
-                  onClick={() => handleSelect(char.id)}
+                  onClick={() => {
+                    if (isMultiSelectMode) {
+                      setSelectedIds(prev => {
+                        const next = new Set(prev);
+                        if (next.has(char.id)) next.delete(char.id);
+                        else next.add(char.id);
+                        return next;
+                      });
+                    } else {
+                      handleSelect(char.id);
+                    }
+                  }}
                   className="group relative p-3 rounded-md cursor-pointer select-none"
                   style={{
-                    backgroundColor: char.id === activeCharacterId ? 'rgba(74, 158, 255, 0.2)' : undefined,
+                    backgroundColor: isSelected
+                      ? 'rgba(74, 158, 255, 0.3)'
+                      : char.id === activeCharacterId
+                        ? 'rgba(74, 158, 255, 0.2)'
+                        : undefined,
                     borderWidth: '1px',
                     borderStyle: 'solid',
-                    borderColor: char.id === activeCharacterId ? 'rgba(74, 158, 255, 0.3)' : 'transparent',
+                    borderColor: isSelected
+                      ? 'rgba(74, 158, 255, 0.6)'
+                      : char.id === activeCharacterId
+                        ? 'rgba(74, 158, 255, 0.3)'
+                        : 'transparent',
                     transform: isDragged
                       ? `translate(${dragOffset.x}px, ${dragOffset.y}px) scale(1.02)`
                       : isDragOver
@@ -206,6 +288,19 @@ export function CharacterList() {
                   )}
 
                   <div className="flex items-center gap-3 pointer-events-none">
+                    {isMultiSelectMode && (
+                      <div
+                        className={`w-4 h-4 rounded border-2 flex items-center justify-center ${
+                          isSelected ? 'bg-accent border-accent' : 'border-text-muted'
+                        }`}
+                      >
+                        {isSelected && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3">
+                            <path d="M20 6L9 17l-5-5" />
+                          </svg>
+                        )}
+                      </div>
+                    )}
                     <div
                       className="flex-shrink-0 cursor-grab active:cursor-grabbing text-text-muted/40 hover:text-text-muted transition-colors p-1"
                       title="拖拽排序"
@@ -234,15 +329,17 @@ export function CharacterList() {
                         {char.role || '未设置定位'}
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleDelete(e, char.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-all pointer-events-auto"
-                      title="删除角色"
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                      </svg>
-                    </button>
+                    {!isMultiSelectMode && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleDelete(e, char.id); }}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/20 text-text-muted hover:text-red-400 transition-all pointer-events-auto"
+                        title="删除角色"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                 </div>
               );

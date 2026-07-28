@@ -1,11 +1,11 @@
-﻿import { create } from 'zustand';
-import { CharacterData, ProjectMeta } from '../types';
+import { create } from 'zustand';
+import { CharacterSummary, ProjectMeta } from '../types';
 import * as api from '../utils/tauri';
 
 interface ProjectState {
   projects: ProjectMeta[];
   activeProjectId: string | null;
-  characters: CharacterData[];
+  characterSummaries: CharacterSummary[];
   activeCharacterId: string | null;
   isLoading: boolean;
   error: string | null;
@@ -15,11 +15,11 @@ interface ProjectState {
   deleteProject: (id: string) => Promise<void>;
   switchProject: (id: string) => Promise<void>;
 
-  loadCharacters: (projectId: string) => Promise<void>;
+  loadCharacterSummaries: (projectId: string) => Promise<void>;
   createCharacter: () => Promise<void>;
   deleteCharacter: (id: string) => Promise<void>;
+  deleteCharacters: (ids: string[]) => Promise<void>;
   switchCharacter: (id: string | null) => void;
-  refreshActiveCharacter: () => Promise<void>;
 
   reorderCharacters: (fromIndex: number, toIndex: number) => Promise<void>;
 
@@ -27,13 +27,12 @@ interface ProjectState {
   importProject: (importPath: string, mode: string, targetProjectId?: string) => Promise<void>;
 
   getActiveProject: () => ProjectMeta | null;
-  getActiveCharacter: () => CharacterData | null;
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   projects: [],
   activeProjectId: null,
-  characters: [],
+  characterSummaries: [],
   activeCharacterId: null,
   isLoading: false,
   error: null,
@@ -49,7 +48,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       const { activeProjectId } = get();
       if (!activeProjectId || !projects.find(p => p.id === activeProjectId)) {
         set({ activeProjectId: projects[0].id });
-        await get().loadCharacters(projects[0].id);
+        await get().loadCharacterSummaries(projects[0].id);
       }
     } catch (error) {
       set({ error: String(error), isLoading: false });
@@ -63,7 +62,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set(state => ({
         projects: [project, ...state.projects],
         activeProjectId: project.id,
-        characters: [],
+        characterSummaries: [],
         activeCharacterId: null,
         isLoading: false,
       }));
@@ -86,9 +85,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
       const { activeProjectId } = get();
       if (activeProjectId) {
-        await get().loadCharacters(activeProjectId);
+        await get().loadCharacterSummaries(activeProjectId);
       } else {
-        set({ characters: [], activeCharacterId: null });
+        set({ characterSummaries: [], activeCharacterId: null });
       }
     } catch (error) {
       set({ error: String(error), isLoading: false });
@@ -97,18 +96,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   switchProject: async (id) => {
     set({ activeProjectId: id, isLoading: true });
-    await get().loadCharacters(id);
+    await get().loadCharacterSummaries(id);
     set({ isLoading: false });
   },
 
-  loadCharacters: async (projectId) => {
+  loadCharacterSummaries: async (projectId) => {
     set({ isLoading: true, error: null });
     try {
-      const characters = await api.listCharacters(projectId);
-      set({ characters, isLoading: false });
+      const summaries = await api.listCharacterSummaries(projectId);
+      set({ characterSummaries: summaries, isLoading: false });
 
-      if (characters.length > 0) {
-        set({ activeCharacterId: characters[0].id });
+      if (summaries.length > 0) {
+        set({ activeCharacterId: summaries[0].id });
       } else {
         set({ activeCharacterId: null });
       }
@@ -125,7 +124,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       const character = await api.createCharacter(activeProjectId);
       set(state => ({
-        characters: [character, ...state.characters],
+        characterSummaries: [
+          { id: character.id, name: character.name, role: character.role, color: character.color, updatedAt: character.updatedAt },
+          ...state.characterSummaries,
+        ],
         activeCharacterId: character.id,
         isLoading: false,
       }));
@@ -142,11 +144,32 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     try {
       await api.deleteCharacter(activeProjectId, id);
       set(state => {
-        const characters = state.characters.filter(c => c.id !== id);
+        const summaries = state.characterSummaries.filter(c => c.id !== id);
         const activeCharacterId = state.activeCharacterId === id
-          ? (characters[0]?.id || null)
+          ? (summaries[0]?.id || null)
           : state.activeCharacterId;
-        return { characters, activeCharacterId, isLoading: false };
+        return { characterSummaries: summaries, activeCharacterId, isLoading: false };
+      });
+    } catch (error) {
+      set({ error: String(error), isLoading: false });
+    }
+  },
+
+  deleteCharacters: async (ids) => {
+    const { activeProjectId } = get();
+    if (!activeProjectId || ids.length === 0) return;
+
+    set({ isLoading: true, error: null });
+    try {
+      for (const id of ids) {
+        await api.deleteCharacter(activeProjectId, id);
+      }
+      set(state => {
+        const summaries = state.characterSummaries.filter(c => !ids.includes(c.id));
+        const activeCharacterId = ids.includes(state.activeCharacterId || '')
+          ? (summaries[0]?.id || null)
+          : state.activeCharacterId;
+        return { characterSummaries: summaries, activeCharacterId, isLoading: false };
       });
     } catch (error) {
       set({ error: String(error), isLoading: false });
@@ -157,43 +180,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ activeCharacterId: id });
   },
 
-  refreshActiveCharacter: async () => {
-    const { activeProjectId, activeCharacterId } = get();
-    if (!activeProjectId || !activeCharacterId) return;
-
-    try {
-      const character = await api.getCharacter(activeProjectId, activeCharacterId);
-      set(state => ({
-        characters: state.characters.map(c =>
-          c.id === character.id ? character : c
-        ),
-      }));
-    } catch (error) {
-      console.error('刷新角色失败:', error);
-    }
-  },
-
-  // ── 拖拽重排序角色 ──
   reorderCharacters: async (fromIndex, toIndex) => {
-    const { characters, activeProjectId } = get();
+    const { characterSummaries, activeProjectId } = get();
     if (!activeProjectId || fromIndex === toIndex) return;
 
-    // 创建新数组并执行移动
-    const newCharacters = [...characters];
-    const [moved] = newCharacters.splice(fromIndex, 1);
-    newCharacters.splice(toIndex, 0, moved);
+    const newSummaries = [...characterSummaries];
+    const [moved] = newSummaries.splice(fromIndex, 1);
+    newSummaries.splice(toIndex, 0, moved);
 
-    // 立即更新本地状态（乐观更新）
-    set({ characters: newCharacters });
+    set({ characterSummaries: newSummaries });
 
-    // 同步到后端：更新项目的 characterIds 顺序
     try {
       const { projects } = get();
       const project = projects.find(p => p.id === activeProjectId);
       if (project) {
         const updatedProject = {
           ...project,
-          characterIds: newCharacters.map(c => c.id),
+          characterIds: newSummaries.map(c => c.id),
           updatedAt: new Date().toISOString(),
         };
         await api.updateProject(updatedProject);
@@ -205,8 +208,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       }
     } catch (error) {
       console.error('保存角色顺序失败:', error);
-      // 失败时回滚（重新加载角色）
-      await get().loadCharacters(activeProjectId);
+      await get().loadCharacterSummaries(activeProjectId);
     }
   },
 
@@ -223,7 +225,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     }
   },
 
-  // ── 支持 new / merge 两种导入模式 ──
   importProject: async (importPath, mode, targetProjectId) => {
     set({ isLoading: true, error: null });
     try {
@@ -234,12 +235,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           activeProjectId: project.id,
           isLoading: false,
         }));
-        await get().loadCharacters(project.id);
+        await get().loadCharacterSummaries(project.id);
       } else {
-        // 合并模式：刷新项目列表和角色
         await get().loadProjects();
         set({ activeProjectId: project.id, isLoading: false });
-        await get().loadCharacters(project.id);
+        await get().loadCharacterSummaries(project.id);
       }
     } catch (error) {
       set({ error: String(error), isLoading: false });
@@ -249,10 +249,5 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   getActiveProject: () => {
     const { projects, activeProjectId } = get();
     return projects.find(p => p.id === activeProjectId) || null;
-  },
-
-  getActiveCharacter: () => {
-    const { characters, activeCharacterId } = get();
-    return characters.find(c => c.id === activeCharacterId) || null;
   },
 }));

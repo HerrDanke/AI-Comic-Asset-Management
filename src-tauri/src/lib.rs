@@ -1,4 +1,6 @@
 pub mod commands;
+pub mod constants;
+pub mod migration;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,6 +15,7 @@ pub fn run() {
             commands::get_project,
             commands::update_project,
             commands::list_characters,
+            commands::list_character_summaries,
             commands::get_character,
             commands::save_character,
             commands::create_character,
@@ -22,6 +25,7 @@ pub fn run() {
             commands::export_project,
             commands::import_project,
             commands::get_image_data,
+            commands::get_thumbnail_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
