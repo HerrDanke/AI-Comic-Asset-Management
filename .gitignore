@@ -66,3 +66,13 @@ coverage/
 
 # Vite 缓存
 .vite/
+
+# 压缩包
+*.zip
+*.7z
+*.rar
+*.tar
+*.gz
+*.bz2
+*.xz
+*.tgz
